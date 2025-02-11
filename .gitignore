@@ -27,3 +27,5 @@ node_modules/
 # Ignore package-lock.json (optional, if you want to ignore it)
 package-lock.json
 
+# json file messages.json
+messages.json
