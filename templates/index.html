@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Python Flask + Socket.IO</title>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>-->
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <script src="/static/dependencies/jquery-3.6.0.min.js"></script>
+    <script src="/static/dependencies/toastr.min.js"></script>
+    <link rel="stylesheet" href="/static/dependencies/toastr.min.css">
+    <script src="/static/dependencies/socket.io.min.js"></script>
+    <link rel="icon" href="/static/images/favicon.ico">
+    <script src="/static/dependencies/ansi_text.js"></script>
+
+    <style>
+       /* https://codeseven.github.io/toastr/demo.html*/
+        /* Custom class for middle-center positioning */
+        #toast-container.toast-middle-center {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            position: fixed;
+            width: 100%;
+            max-width: none;
+            pointer-events: none;
+        }
+
+        #toast-container.toast-middle-center > .toast {
+            position: relative;
+            margin: 0 auto;
+            pointer-events: auto;
+        }
+    </style>
+
+    <script>
+        let ansi;
+        //dictionary to store the sounds
+        const sounds = {
+            success: "success",
+            error:  "error",
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+                 ansi = new Ansi();
+       //  ansi.test(); //uncomment this line to test ansi
+            //this old approach used fetch to get the environment variable from a server route /get-env
+//            fetch('/get-env')
+//                .then(response => response.json())
+//                .then(env => {
+//                    const socket = io(env.FLASK_SERVER_URL); // Use the environment variable
+
+
+                   const socket = io('{{ flask_server_url }}'); // Use the environment variable
+
+             //debug the flask_server_url
+                    ansi.green().bgOrange().bold().underline().text('flask_server_url:  ' + '{{ flask_server_url}}').print();
+
+                    socket.on('connect', () => {
+                        console.log('Connected to Python Flask server');
+                        ansi.blue().bgYellow().bold().underline().text('Connected to Python Flask server').print();
+                        socket.emit('message', { data: 'Hello from python client!' });
+                    });
+
+                    socket.on('response', (data) => {
+                        console.log('Response from Flask server:', data);
+                        ansi.blue().bgYellow().bold().underline().text('Response from Flask server:').print();
+                        const response = document.getElementById('response');
+                        if (response) {
+                            response.textContent = "response: " + data;
+                        }
+                    });
+
+                    socket.on('slider-update-client', (data) => {
+                        console.log('Slider value received:', data);
+                        ansi.blue().bgYellow().bold().underline().text('Slider value received:').print();
+                        const sliderValue = document.getElementById('slider-value');
+                        if (sliderValue) {
+                            sliderValue.textContent = data.data;
+                            // Update the slider value
+                            const slider = document.getElementById('slider');
+                            slider.value = data.data;
+                            console.log('Slider value:', data.data);
+                        }
+                    });
+
+                    socket.on('refresh-messages', () => {
+                        fetchMessages();
+                        toastSuccess('Messages refreshed!', 0.3);
+                    });
+
+            //act on   socketio.emit('receive-from-node', data, namespace='/') to add data to the message element: <p id="message">Message - default......</p>
+                socket.on('receive-from-node', (data) => {
+                    console.log('Message from Node.js server:', data);
+                    ansi.red().bgWhite().bold().underline().text('Message from Node.js server:').print();
+                    const message = document.getElementById('message');
+                    if (message) {
+                        message.textContent = "message: " + data.message;
+                        toastSuccess('Message from Node.js server: ' + data.message, 0.3);
+                    }
+
+                    //in element <p id="response">Response - default......</p> put the data from the node server called random_string
+                    const response = document.getElementById('response');
+                    if (response) {
+                        response.textContent = "response: " + data.random_string;
+                    }
+
+                });
+
+
+                    const button = document.getElementById('send-random-string');
+                    button.addEventListener('click', () => {
+                        const userInput = document.getElementById('user-input').value;
+                        //if user input is empty, return
+                        if (!userInput) {
+                            ansi.red().bgWhite().bold().underline().text('User input is empty!').print();
+                            toastError('User input is empty!', 0.3);
+                            return;
+                        }
+                        const randomStr = randomString(10);
+                        const dateTime = getBeijingTime();
+                        const bgColor = lightColor(0.5);
+                        const textColor = complementaryColor(bgColor);
+                        const message = `${userInput} ${randomStr} ${dateTime}`;
+                        socket.emit('message', { data: message });
+                        const messageSent = document.getElementById('message-sent');
+                        if (messageSent) {
+                            messageSent.textContent = "message-sent: " + message;
+                            messageSent.style.opacity = 1;
+                            setTimeout(() => {
+                                messageSent.style.transition = "opacity 1s";
+                                messageSent.style.opacity = 0;
+                            }, 2000);
+                        }
+                        fetch('/save', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ message: userInput, random_string: randomStr, datetime: dateTime, bgColor: bgColor, textColor: textColor })
+                        }).then(response => response.json())
+                          .then(data => {
+                              console.log('Save response:', data);
+                              ansi.yellow().bgRed().bold().underline().text('Save response:').print();
+                              fetchMessages();
+                          }).catch(error => {
+                              console.error('Error:', error);
+                          });
+                    });
+
+                    const slider = document.getElementById('slider');
+                    slider.addEventListener('input', () => {
+                        const value = slider.value;
+                        socket.emit('slider-update', { data: value } );
+                        //set the slider value of this client to the value of the slider
+                        const sliderValue = document.getElementById('slider-value');
+                        if (sliderValue) {
+                            sliderValue.textContent = value;
+                        }
+                    });
+
+                    fetchMessages();
+                    //set the slider value of this client to mid value at the start
+                    const sliderValue = document.getElementById('slider-value');
+                    const midValue =   Math.floor((parseInt(slider.min) + parseInt(slider.max)) / 2);
+                    console.log('midValue:', midValue);
+                    if (sliderValue) {
+                        sliderValue.textContent = midValue;
+                        slider.value = midValue;
+                    }
+//                });//end of fetch
+
+
+
+
+            toastr.options = {
+                positionClass: 'toast-middle-center' // Use the custom class
+            };
+
+
+        });//end of document.addEventListener
+
+        function randomString(length) {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
+
+        function lightColor(lightness = 0.5) {
+            lightness = Math.min(1, Math.max(0, lightness));
+            const r = Math.floor((1 - lightness) * 255 + lightness * Math.random() * 255);
+            const g = Math.floor((1 - lightness) * 255 + lightness * Math.random() * 255);
+            const b = Math.floor((1 - lightness) * 255 + lightness * Math.random() * 255);
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        function complementaryColor(color) {
+            const r = 255 - parseInt(color.slice(1, 3), 16);
+            const g = 255 - parseInt(color.slice(3, 5), 16);
+            const b = 255 - parseInt(color.slice(5, 7), 16);
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        function fetchMessages() {
+            fetch('/messages')
+                .then(response => response.json())
+                .then(messages => {
+                    const messageList = document.getElementById('message-list');
+                    messageList.innerHTML = '';
+                    messages.forEach(message => {
+                        const li = document.createElement('li');
+                        li.textContent = `${message.message} __ ${message.random_string} __ ${message.datetime} __ ${message.ip}`;
+                        li.style.backgroundColor = message.bgColor;
+                        li.style.color = message.textColor;
+                        li.style.fontWeight = 'bold';
+                        messageList.appendChild(li);
+                    });
+                });
+        }
+
+       function getBeijingTime() {
+            const now = new Date();
+            const beijingTime = now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' });
+            const date = new Date(beijingTime);
+
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are zero-based
+            const year = date.getFullYear();
+
+            return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+        }
+
+        //method to play sound
+        function playSound(sound, volume = 0.5) {
+            const audio = document.getElementById(sound);
+            audio.volume = volume;
+            audio.play();
+
+
+        }
+
+        function toastSuccess( message,  volume = 0.5) {
+            toastr.success(message, 'Success');
+            playSound(sounds.success , volume);
+        }
+        function toastError( message,  volume = 0.5) {
+            toastr.error(message, 'Error');
+            playSound(sounds.error, volume);
+        }
+
+
+          //method to test communicate with node
+        function testCommunicateWithNode() {
+            ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Test Communicate with Node.js").print();
+             ansi.green().bgOrange().bold().underline().text('flask_server_url:  ' + '{{ flask_server_url }}').print();
+//            fetch('{{ flask_server_url }}/test-communicate-with-node', {
+             fetch('/test-communicate-with-node', {
+                method: 'GET'
+            })
+            .then(response => {
+                if (response.headers.get('content-type')?.includes('application/json')) {
+                    return response.json();
+                } else {
+                    throw new Error('Unexpected response format');
+                }
+            })
+            .then(data => {
+                console.log('Response from Node.js:', data);
+                ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Response from Node.js:").print();
+                if (data.success) {
+                    document.getElementById('success').play();
+                    toastr.success(data.message);
+                } else {
+                    document.getElementById('error').play();
+                    toastr.error(data.message);
+                }
+            })
+            .catch(error => {
+                ansi.rgb(255, 0, 0).bgCyan().italic().bold().underline().text("Error:").print();
+            });
+        }
+
+</script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+               /*        border on page full screen width and height */
+
+            border: 8px solid #0000ff;
+            border-radius: 10px;
+            background-color: #f0f0f0;
+            width: 100vw;
+            height: 100vh;
+            box-sizing: border-box; /* Include border in the element's total width and height */
+
+
+
+
+        }
+
+
+
+
+        h1 {
+            margin-top: 50px;
+        }
+
+        p {
+            margin-top: 20px;
+        }
+
+        #message-sent {
+            min-height: 20px;
+            opacity: 0;
+        }
+
+        #message-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #message-list li {
+            border: 1px solid #ccc;
+            margin: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        #message-list li:nth-child(odd) {
+            background-color: #e9e9e9;
+        }
+
+        /* Slider Styles */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 50%;
+            height: 8px;
+            background: #000069;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: #007bff; /* Blue color */
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: #007bff; /* Blue color */
+            cursor: pointer;
+            border-radius: 50%;
+        }
+     /* #toast-container.toast-top-center > .toast {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            position: fixed;
+        }
+
+        #toast-container.toast-top-center {
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: none;
+            pointer-events: none;
+        }*/
+
+    </style>
+</head>
+<body>
+     <audio id="success" src="/static/audio/success.mp3"></audio>
+     <audio id="error" src="/static/audio/error.mp3"></audio>
+
+    <h1>Python Flask + Socket.IO</h1>
+     <button onclick="testCommunicateWithNode()">Test Communicate with Node.js</button>
+     <p id="response">Response - default......</p>
+    <p id="message">Message - default......</p>
+    <p>Slider Value: <span id="slider-value"></span></p>
+    <input type="range" id="slider" min="0" max="500" value="250"><br><br>
+
+    <input type="text" id="user-input" placeholder="Enter your message">
+    <button id="send-random-string">Send Message String</button>
+    <p id="message-sent">Message Sent - default......</p>
+    <ul id="message-list"></ul>
+</body>
+</html>

@@ -1,0 +1,24 @@
+#ngrok.yml, at C:\Users\Admin\AppData\Local\ngrok\ngrok.yml
+
+version: "2"
+authtoken: 2oc48XqU5OuJ4gCza83jxxxXslz_88xZtQRkhZUF4gU3XZZTw
+
+tunnels:
+  tunnel1:
+    addr: 192.168.1.24:4000
+    proto: http
+  tunnel2:
+    addr: 192.168.1.24:5000
+    proto: http
+
+
+
+start at cmd line with: "ngrok start --config ngrok.yml tunnel1 tunnel2"
+
+
+
+requirements:
+pip freeze > requirements.txt
+
+install:
+pip install -r requirements.txt

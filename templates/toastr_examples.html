@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Toastr Example</title>
+    <script src="./static/dependencies/jquery-3.6.0.min.js"></script>
+    <script src="./static/dependencies/toastr.min.js"></script>
+    <link rel="stylesheet" href="./static/dependencies/toastr.min.css">
+    <style>
+/*       style the toastr messages to be a top center*/
+        .toast-top-center {
+            top: 0;
+            right: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="showSuccess()">Show Success</button>
+    <button onclick="showError()">Show Error</button>
+    <button onclick="showInfo()">Show Info</button>
+    <button onclick="showWarning()">Show Warning</button>
+
+    <script>
+        function showSuccess() {
+            toastr.success('This is a success message!', 'Success');
+        }
+
+        function showError() {
+            toastr.error('This is an error message!', 'Error');
+        }
+
+        function showInfo() {
+            toastr.info('This is an info message!', 'Info');
+        }
+
+        function showWarning() {
+            toastr.warning('This is a warning message!', 'Warning');
+        }
+    </script>
+</body>
+</html>

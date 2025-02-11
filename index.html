@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Node.js + Socket.IO</title>
+<!--    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>-->
+    <!--    use socket.io.min.js from static/dependencies folder-->
+    <script src="./static/dependencies/socket.io.min.js"></script>
+<!--    use toast from static/dependencies folder-->
+    <script src="./static/dependencies/toastr.min.js"></script>
+<!--    use toast.css from static/dependencies folder-->
+    <link rel="stylesheet" href="./static/dependencies/toastr.min.css">
+<!--    use  jquery from static/dependencies folder-->
+    <script src="./static/dependencies/jquery-3.6.0.min.js"></script>
+    <!--    get success.mp3 from static/audio folder-->
+<!--    get favicon.ico from static/images folder-->
+    <link rel="icon" href="./static/images/favicon.ico">
+<!--    ansi-->
+    <script src="./static/dependencies/ansi_text.js"></script>
+<!--    place toastr messages in middle of screen-->
+    <style>
+       /* https://codeseven.github.io/toastr/demo.html*/
+        /* Custom class for middle-center positioning */
+        #toast-container.toast-middle-center {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            position: fixed;
+            width: 100%;
+            max-width: none;
+            pointer-events: none;
+        }
+
+        #toast-container.toast-middle-center > .toast {
+            position: relative;
+            margin: 0 auto;
+            pointer-events: auto;
+        }
+    </style>
+
+    <script>
+        let ansi;
+
+        const sounds = {
+            success: "success",
+            error:  "error",
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            ansi = new Ansi();
+            //  ansi.test(); //uncomment this line to test ansi
+            fetch('/get-env')
+                .then(response => response.json())
+                .then(env => {
+                    const socket = io(env.NODEJS_SERVER_URL); // Use the environment variable
+
+
+                   ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("NODEJS_SERVER_URL: " + env.NODEJS_SERVER_URL).print();
+                    socket.on('connect', () => {
+                        console.log('Connected to Node.js server');
+                        ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Connected to Node.js server").print();
+                        socket.emit('message', { data: 'Hello from nodejs client!' });
+                    });
+
+                    socket.on('response', (data) => {
+                        console.log('Response from Node.js server:', data);
+                        ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Response from Node.js server:").print();
+                        const response = document.getElementById('response');
+                        if (response) {
+                            response.textContent = data;
+                        }
+                    });
+
+                    socket.on('slider-update', (data) => {
+                        console.log('Slider value received:', data);
+                        ansi.rgb(12, 165, 234).bgCyan().italic().bold().underline().text("Slider value received:").print();
+                        const sliderValue = document.getElementById('slider-value');
+                        if (sliderValue) {
+                            sliderValue.textContent = data.data;
+                        }
+                    });
+
+                //test communicate with flask
+                    socket.on('receive-from-flask', (data) => {
+                        console.log('Message from Flask server:', data);
+                        ansi.red().bgWhite().bold().underline().text('Message from Flask server:').print();
+                        const message = document.getElementById('message');
+                        if (message) {
+                            message.textContent = "message: " + data.message;
+                            ansi.red().bgWhite().bold().underline().text('message: ' + data.message).print();
+
+                        }
+
+                        const response = document.getElementById('response');
+                        if (response) {
+                            response.textContent = "response: " + data.random_string;
+                        }
+                    });
+
+                    const slider = document.getElementById('slider');
+                    const value = document.getElementById('value');
+                    slider.addEventListener('input', () => {
+                        value.textContent = slider.value;
+                        socket.emit('message', { data: slider.value });
+                    });
+                });
+
+            toastr.options = {
+                positionClass: 'toast-middle-center' // Use the custom class
+            };
+
+
+
+
+
+    });
+
+
+
+            //method to play sound
+        function playSound(sound, volume = 0.5) {
+            const audio = document.getElementById(sound);
+            audio.volume = volume;
+            audio.play();
+
+
+        }
+
+        function toastSuccess(message, volume = 0.5) {
+            if (typeof toastr !== 'undefined') {
+                toastr.success(message, 'Success');
+                playSound(sounds.success, volume);
+            } else {
+                console.error('toastr is not defined');
+            }
+        }
+
+        function toastError(message, volume = 0.5) {
+            if (typeof toastr !== 'undefined') {
+                toastr.error(message, 'Error');
+                playSound(sounds.error, volume);
+            } else {
+                console.error('toastr is not defined');
+            }
+        }
+
+
+     function testCommunicateWithFlask() {
+            ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Test Communicate with Flask").print();
+            fetch('/test-communicate-with-flask', {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Response from Flask:', data);
+                ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Response from Flask:").print();
+                if (data.status === 'success') {
+                    document.getElementById('success').play();
+                    //toastr.success(data.message);
+                    toastSuccess('Success in testCommunicateWithFlask!', 0.3);
+                } else {
+                    document.getElementById('error').play();
+//                    toastr.error(data.message);
+                    toastError('Error in testCommunicateWithFlask!', 0.3);
+                }
+            })
+            .catch(error => {
+                ansi.rgb(255, 0, 0).bgCyan().italic().bold().underline().text("Error:").print();
+            });
+        }
+
+
+</script>
+</head>
+<body>
+    <audio id="success" src="./static/audio/success.mp3"></audio>
+    <audio id="error" src="./static/audio/error.mp3"></audio>
+    <h1>Node.js + Socket.IO</h1>
+    <button onclick="testCommunicateWithFlask()">Test Communicate with Flask</button>
+    <p id="response">Response - default......</p>
+    <p id="message">Message - default......</p>
+    <input type="range" id="slider" min="0" max="100" value="50">
+    <p>Value: <span id="value"></span></p>
+    <p>Slider Value: <span id="slider-value">50</span></p>
+
+
+
+
+</body>
+</html>
