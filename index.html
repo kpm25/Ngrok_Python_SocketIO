@@ -80,7 +80,7 @@
                         }
                     });
 
-                //test communicate with flask
+                //test communicate with flask using Post and Get
                     socket.on('receive-from-flask', (data) => {
                         console.log('Message from Flask server:', data);
                         ansi.red().bgWhite().bold().underline().text('Message from Flask server:').print();
@@ -96,6 +96,8 @@
                             response.textContent = "response: " + data.random_string;
                         }
                     });
+
+
 
                     const slider = document.getElementById('slider');
                     const value = document.getElementById('value');
@@ -115,6 +117,15 @@
 
     });
 
+        function randomString(length) {
+            let result = '';
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            }
+            return result;
+        }
 
 
             //method to play sound
@@ -172,16 +183,50 @@
             });
         }
 
-        // Add the header to the initial page load request
-            document.addEventListener('DOMContentLoaded', function() {
-                fetch(window.location.href, {
-                    method: 'GET',
-                    headers: {
-                        'ngrok-skip-browser-warning': 'true'
-                    }
-                });
+        function testPostCommunicateWithFlask() {
+            ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Test POST Communicate with Flask").print();
+            fetch('/test-post-communicate-with-flask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({
+                    message: 'Hello from Node.js ___ (POST) ___ ' + randomString(10),
+                    datetime: new Date().toISOString(),
+                    random_string: 'randomString123 ___ (POST) ___ ' + randomString(10),
+                    bgColor: '#ffffff',
+                    textColor: '#000000'
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                console.log('Response from Flask:', data);
+                ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Response from Flask:").print();
+                if (data.status === 'success') {
+                    document.getElementById('success').play();
+                    toastSuccess('Success in testPostCommunicateWithFlask!', 0.3);
+                } else {
+                    document.getElementById('error').play();
+                    toastError('Error in testPostCommunicateWithFlask!', 0.3);
+                }
+            })
+                .catch(error => {
+                ansi.rgb(255, 0, 0).bgCyan().italic().bold().underline().text("Error:").print();
             });
+        }
 
+
+
+        // Add the header to the initial page load request
+           document.addEventListener('DOMContentLoaded', function() {
+            fetch(window.location.href, {
+                method: 'GET',
+                headers: {
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            });
+        });
 
 </script>
 </head>
@@ -190,9 +235,10 @@
     <audio id="error" src="./static/audio/error.mp3"></audio>
      <a href="http://www.kiwicocoa.com/ngrok_servers/">Index Page</a>
     <h1>Node.js + Socket.IO</h1>
-    <button onclick="testCommunicateWithFlask()">Test Communicate with Flask</button>
-    <p id="response">Response - default......</p>
-    <p id="message">Message - default......</p>
+    <button onclick="testCommunicateWithFlask()">Test GET Communication with Flask</button>&nbsp;
+    <button onclick="testPostCommunicateWithFlask()">Test POST Communication with Flask</button>
+     <p id="message">Message - default......</p>
+     <p id="response">Response - default......</p>
     <input type="range" id="slider" min="0" max="100" value="50">
     <p>Value: <span id="value"></span></p>
     <p>Slider Value: <span id="slider-value">50</span></p>

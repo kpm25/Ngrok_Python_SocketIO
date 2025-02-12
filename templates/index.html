@@ -87,7 +87,7 @@
                         toastSuccess('Messages refreshed!', 0.3);
                     });
 
-            //act on   socketio.emit('receive-from-node', data, namespace='/') to add data to the message element: <p id="message">Message - default......</p>
+            //Test the communication with node using Post and Get
                 socket.on('receive-from-node', (data) => {
                     console.log('Message from Node.js server:', data);
                     ansi.red().bgWhite().bold().underline().text('Message from Node.js server:').print();
@@ -289,6 +289,51 @@
         }
 
 
+
+
+
+        //method to test communicate with node using POST
+        function testPostCommunicateWithNode() {
+            ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Test POST Communicate with Node.js").print();
+            ansi.green().bgOrange().bold().underline().text('flask_server_url:  ' + '{{ flask_server_url }}').print();
+            fetch('/test-post-communicate-with-node', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({
+                    message: 'Hello from Flask ___ (POST) ___ ' + randomString(10),
+                    datetime: '2023-10-10T10:10:10Z',
+                    random_string: 'randomString456 ___ (POST) ___ ' + randomString(10),
+                    bgColor: '#000000',
+                    textColor: '#ffffff'
+                })
+            })
+            .then(response => {
+                if (response.headers.get('content-type')?.includes('application/json')) {
+                    return response.json();
+                } else {
+                    throw new Error('Unexpected response format');
+                }
+            })
+            .then(data => {
+                console.log('Response from Node.js:', data);
+                ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Response from Node.js:").print();
+                if (data.success) {
+                    document.getElementById('success').play();
+                    toastr.success(data.message);
+                } else {
+                    document.getElementById('error').play();
+                    toastr.error(data.message);
+                }
+            })
+            .catch(error => {
+                ansi.rgb(255, 0, 0).bgCyan().italic().bold().underline().text("Error:").print();
+            });
+        }
+
+
         // Add the header to the initial page load request
             document.addEventListener('DOMContentLoaded', function() {
                 fetch(window.location.href, {
@@ -409,9 +454,10 @@
 
      <a href="http://www.kiwicocoa.com/ngrok_servers/">Index Page</a>
     <h1>Python Flask + Socket.IO</h1>
-     <button onclick="testCommunicateWithNode()">Test Communicate with Node.js</button>
+     <button onclick="testCommunicateWithNode()">Test GET Communication with Node.js</button>&nbsp;
+     <button onclick="testPostCommunicateWithNode()">Test POST Communication with Node.js</button>
+     <p id="message">Message - default......</p>
      <p id="response">Response - default......</p>
-    <p id="message">Message - default......</p>
     <p>Slider Value: <span id="slider-value"></span></p>
     <input type="range" id="slider" min="0" max="500" value="250"><br><br>
 

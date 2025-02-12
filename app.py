@@ -27,7 +27,8 @@ socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=1000000)
 
 @app.route('/')
 def index():
-    flask_server_url = os.getenv('FLASK_SERVER_URL') if os.getenv('USE_NGROK') == 'true' else os.getenv('LOCAL_FLASK_SERVER_URL')
+    flask_server_url = os.getenv('FLASK_SERVER_URL') if os.getenv('USE_NGROK') == 'true' else os.getenv(
+        'LOCAL_FLASK_SERVER_URL')
     print(Fore.GREEN + f"FLASK_SERVER_URL: {flask_server_url}" + Style.RESET_ALL)
     return render_template('index.html', flask_server_url=flask_server_url)
 
@@ -39,7 +40,8 @@ def save():
     # Check for the X-Forwarded-For header
     if request.headers.getlist("X-Forwarded-For"):
         client_ip = request.headers.getlist("X-Forwarded-For")[0]
-        print(Back.LIGHTWHITE_EX + Fore.BLACK + f"X-Forwarded-For: {client_ip}" + Style.RESET_ALL + " " + Back.LIGHTWHITE_EX + Fore.BLACK + f"X-Forwarded-For: {client_ip}" + Style.RESET_ALL)
+        print(
+            Back.LIGHTWHITE_EX + Fore.BLACK + f"X-Forwarded-For: {client_ip}" + Style.RESET_ALL + " " + Back.LIGHTWHITE_EX + Fore.BLACK + f"X-Forwarded-For: {client_ip}" + Style.RESET_ALL)
 
     public_ip = client_ip  # Default to local IP
 
@@ -124,18 +126,33 @@ def receive_from_node():
     return jsonify({'status': 'success', 'data': data})
 
 
+@app.route('/receive-post-from-node', methods=['POST'])
+def receive_post_from_node():
+    data = request.json
+    print('Received from Node.js:', data)
+    print(Fore.LIGHTCYAN_EX + '********Received from Node.js:', data, Style.RESET_ALL)
+    # send socket event to all clients with the received data
+    socketio.emit('receive-from-node', data, namespace='/')
+    return jsonify({'status': 'success', 'data': data})
+
+
 @app.route('/test-communicate-with-node', methods=['GET'])
 def test_communicate_with_node():
     print(Fore.YELLOW + '********Testing communication with Node.js called...' + Style.RESET_ALL)
 
     try:
         params = {
-            'message': 'Hello from Flask ___ ' + random_string(10),
+            'message': 'Hello from Flask ___ (GET) ___ ' + random_string(10),
             'datetime': '2023-10-10T10:10:10Z',
-            'random_string': 'randomString456 ___ ' + random_string(10),
+            'random_string': 'randomString456 ___ (GET) ___ ' + random_string(10),
             'bgColor': '#000000',
             'textColor': '#ffffff'
         }
+
+
+        params['message'] = params['message'] + '__from Flask'
+        params['random_string'] = params['random_string'] + '__from Flask'
+
         print(Fore.LIGHTCYAN_EX + '********Sending to Node.js:', str(params) + Style.RESET_ALL)
         nodejs_server_url = os.getenv('NODEJS_SERVER_URL') if os.getenv('USE_NGROK') == 'true' else os.getenv(
             'LOCAL_NODEJS_SERVER_URL')
@@ -144,6 +161,48 @@ def test_communicate_with_node():
         response = requests.get(f"{nodejs_server_url}/receive-from-flask", params=params)
         response.raise_for_status()
         data = response.json()
+        print(Fore.LIGHTCYAN_EX + '********Response from Node.js:', str(data) + Style.RESET_ALL)
+        return jsonify({'success': True, 'message': 'Communication with Node.js successful', 'data': data})
+    except requests.RequestException as e:
+        print(Fore.RED + '********Error:', str(e) + Style.RESET_ALL)
+        return jsonify({'success': False, 'message': str(e)})
+    except ValueError as e:
+        print(Fore.RED + '********Error parsing JSON:', str(e) + Style.RESET_ALL)
+        return jsonify({'success': False, 'message': 'Error parsing JSON response from Node.js'})
+
+
+@app.route('/test-post-communicate-with-node', methods=['POST'])
+def test_post_communicate_with_node():
+    print(Fore.YELLOW + '********Testing POST communication with Node.js called...' + Style.RESET_ALL)
+
+    try:
+        data = request.json
+        message = data.get('message', 'Hello from Flask ___ ' + random_string(10))
+        random_string_value = data.get('random_string', 'randomString456 ___ ' + random_string(10))
+
+        params = {
+            'message': message,
+            'datetime': data.get('datetime', '2023-10-10T10:10:10Z'),
+            'random_string': random_string_value,
+            'bgColor': data.get('bgColor', '#000000'),
+            'textColor': data.get('textColor', '#ffffff')
+        }
+
+        params['message'] = params['message'] + '__from Flask'
+        params['random_string'] = params['random_string'] + '__from Flask'
+
+        print(Fore.LIGHTCYAN_EX + '********Message:', message + Style.RESET_ALL)
+        print(Fore.LIGHTCYAN_EX + '********Random String:', random_string_value + Style.RESET_ALL)
+        print(Fore.LIGHTCYAN_EX + '********Sending to Node.js:', str(params) + Style.RESET_ALL)
+
+        nodejs_server_url = os.getenv('NODEJS_SERVER_URL') if os.getenv('USE_NGROK') == 'true' else os.getenv(
+            'LOCAL_NODEJS_SERVER_URL')
+        print(Fore.YELLOW + f"Node.js server URL: {nodejs_server_url}" + Style.RESET_ALL)
+
+        response = requests.post(f"{nodejs_server_url}/receive-from-flask-post", json=params)
+        response.raise_for_status()
+        data = response.json()
+
         print(Fore.LIGHTCYAN_EX + '********Response from Node.js:', str(data) + Style.RESET_ALL)
         return jsonify({'success': True, 'message': 'Communication with Node.js successful', 'data': data})
     except requests.RequestException as e:

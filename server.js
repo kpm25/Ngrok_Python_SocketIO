@@ -62,15 +62,27 @@ app.get('/receive-from-flask', (req, res) => {
     res.json({ status: 'success', data });
 });
 
+app.post('/receive-from-flask-post', (req, res) => {
+    const data = req.body;
+    ansi.pink().bgBlack().bold().italic().underline().text('*******at route: /receive-from-flask-post').print();
+    ansi.pink().bgBlack().bold().italic().underline().text('Received from Flask (POST): ' + JSON.stringify(data)).print();
+    console.log('Received from Flask (POST):', data);
+    // Send to all clients
+    io.emit('receive-from-flask', data);
+    res.json({ status: 'success', data });
+});
+
 function communicateWithFlask() {
     const data = {
-        message: 'Hello from Node.js ___ ' + randomString(10),
+        message: 'Hello from Node.js ___ (GET) ___ ' + randomString(10),
         datetime: new Date().toISOString(),
-        random_string: 'randomString123 --- ' + randomString(5),
+        random_string: 'randomString123 ___ (GET) ___ ' + randomString(10),
         bgColor: '#ffffff',
         textColor: '#000000'
     };
 
+    data.message = data.message + '__from Node.js';
+    data.random_string = data.random_string + '__from Node.js';
 
     const url = new URL(FLASK_SERVER_URL);
     const queryParams = new URLSearchParams(data).toString();
@@ -110,6 +122,46 @@ function communicateWithFlask() {
     req.end();
 }
 
+
+function postCommunicateWithFlask(data) {
+    // Append to existing values
+    data.message = data.message + '__from Node.js';
+    data.random_string = data.random_string + '__from Node.js';
+
+    return new Promise((resolve, reject) => {
+        const options = {
+            hostname: LOCAL_IP_ADDRESS,
+            port: FLASK_PORT,
+            path: '/receive-post-from-node',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const req = http.request(options, (res) => {
+            let responseData = '';
+            res.on('data', (chunk) => {
+                responseData += chunk;
+            });
+            res.on('end', () => {
+                if (res.statusCode === 200) {
+                    resolve(JSON.parse(responseData));
+                } else {
+                    reject(new Error('Failed to communicate with Flask'));
+                }
+            });
+        });
+
+        req.on('error', (error) => {
+            reject(error);
+        });
+
+        req.write(JSON.stringify(data));
+        req.end();
+    });
+}
+
 io.on('connection', (socket) => {
     console.log('A user connected to Node.js server');
 
@@ -135,6 +187,16 @@ io.on('connection', (socket) => {
     res.json({ status: 'success', message: 'communicateWithFlask function called' });
 });
 
+app.post('/test-post-communicate-with-flask', (req, res) => {
+    const data = req.body;
+    postCommunicateWithFlask(data)
+        .then(responseData => {
+            res.json({ status: 'success', data: responseData });
+        })
+        .catch(error => {
+            res.json({ status: 'error', message: error.message });
+        });
+});
 
 
 server.listen(NODEJS_PORT, () => {
