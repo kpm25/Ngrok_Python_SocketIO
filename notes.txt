@@ -23,5 +23,6 @@ pip freeze > requirements.txt
 
 install:
 pip install -r requirements.txt
+npm install
 
 run with python app.py  and npm start or node server.js
