@@ -94,7 +94,7 @@
                     const message = document.getElementById('message');
                     if (message) {
                         message.textContent = "message: " + data.message;
-                        toastSuccess('Message from Node.js server: ' + data.message, 0.3);
+                       // toastSuccess('Message from Node.js server: ' + data.message, 0.3);
                     }
 
                     //in element <p id="response">Response - default......</p> put the data from the node server called random_string
@@ -260,7 +260,10 @@
              ansi.green().bgOrange().bold().underline().text('flask_server_url:  ' + '{{ flask_server_url }}').print();
 //            fetch('{{ flask_server_url }}/test-communicate-with-node', {
              fetch('/test-communicate-with-node', {
-                method: 'GET'
+                method: 'GET',
+                 headers: {
+                      'ngrok-skip-browser-warning': 'true'
+                 }
             })
             .then(response => {
                 if (response.headers.get('content-type')?.includes('application/json')) {
@@ -284,6 +287,17 @@
                 ansi.rgb(255, 0, 0).bgCyan().italic().bold().underline().text("Error:").print();
             });
         }
+
+
+        // Add the header to the initial page load request
+            document.addEventListener('DOMContentLoaded', function() {
+                fetch(window.location.href, {
+                    method: 'GET',
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+            });
 
 </script>
     <style>
@@ -393,6 +407,7 @@
      <audio id="success" src="/static/audio/success.mp3"></audio>
      <audio id="error" src="/static/audio/error.mp3"></audio>
 
+     <a href="http://www.kiwicocoa.com/ngrok_servers/">Index Page</a>
     <h1>Python Flask + Socket.IO</h1>
      <button onclick="testCommunicateWithNode()">Test Communicate with Node.js</button>
      <p id="response">Response - default......</p>

@@ -76,6 +76,7 @@
                         const sliderValue = document.getElementById('slider-value');
                         if (sliderValue) {
                             sliderValue.textContent = data.data;
+                            slider.value = data.data;
                         }
                     });
 
@@ -147,7 +148,10 @@
      function testCommunicateWithFlask() {
             ansi.rgb(255, 165, 0).bgCyan().italic().bold().underline().text("Test Communicate with Flask").print();
             fetch('/test-communicate-with-flask', {
-                method: 'GET'
+                method: 'GET',
+                 headers: {
+                      'ngrok-skip-browser-warning': 'true'
+                 }
             })
             .then(response => response.json())
             .then(data => {
@@ -168,12 +172,23 @@
             });
         }
 
+        // Add the header to the initial page load request
+            document.addEventListener('DOMContentLoaded', function() {
+                fetch(window.location.href, {
+                    method: 'GET',
+                    headers: {
+                        'ngrok-skip-browser-warning': 'true'
+                    }
+                });
+            });
+
 
 </script>
 </head>
 <body>
     <audio id="success" src="./static/audio/success.mp3"></audio>
     <audio id="error" src="./static/audio/error.mp3"></audio>
+     <a href="http://www.kiwicocoa.com/ngrok_servers/">Index Page</a>
     <h1>Node.js + Socket.IO</h1>
     <button onclick="testCommunicateWithFlask()">Test Communicate with Flask</button>
     <p id="response">Response - default......</p>
