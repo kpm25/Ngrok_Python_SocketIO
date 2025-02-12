@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO
 from flask_cors import CORS
 from dotenv import load_dotenv
-from colorama import Fore, Style
+from colorama import Fore, Style, Back
 import threading
 
 load_dotenv()  # Load environment variables from .env file
@@ -36,15 +36,12 @@ def index():
 def save():
     data = request.json
     client_ip = request.remote_addr
-    public_ip = client_ip  # Default to local IP
+    # Check for the X-Forwarded-For header
+    if request.headers.getlist("X-Forwarded-For"):
+        client_ip = request.headers.getlist("X-Forwarded-For")[0]
+        print(Back.LIGHTWHITE_EX + Fore.BLACK + f"X-Forwarded-For: {client_ip}" + Style.RESET_ALL + " " + Back.LIGHTWHITE_EX + Fore.BLACK + f"X-Forwarded-For: {client_ip}" + Style.RESET_ALL)
 
-    try:
-        # Use an external service to get the public IP address (IPv4 or IPv6)
-        response = requests.get('https://api64.ipify.org?format=json', timeout=5)
-        if response.status_code == 200:
-            public_ip = response.json().get('ip')
-    except requests.RequestException as e:
-        print(f"Error fetching public IP: {e}")
+    public_ip = client_ip  # Default to local IP
 
     print('Received save:', data)
     message = {
@@ -127,27 +124,6 @@ def receive_from_node():
     return jsonify({'status': 'success', 'data': data})
 
 
-# def communicate_with_node():
-#     print(Fore.YELLOW + '********Communicating with Node.js...' + Style.RESET_ALL)
-#     try:
-#         params = {
-#             'message': 'Hello from Flask',
-#             'datetime': '2023-10-10T10:10:10Z',
-#             'random_string': 'randomString456',
-#             'bgColor': '#000000',
-#             'textColor': '#ffffff'
-#         }
-#         response = requests.get('http://localhost:5000/receive-from-flask', params=params)
-#         response.raise_for_status()  # Ensure we raise an error for bad status codes
-#         print(Fore.LIGHTCYAN_EX + '********Response from Node.js:', response.text + Style.RESET_ALL)
-#         response_json = response.json()
-#         print(Fore.LIGHTCYAN_EX + '********Response from Node.js (JSON):', response_json + Style.RESET_ALL)
-#     except requests.RequestException as e:
-#         print(f'Error communicating with Node.js: {e}')
-#     except ValueError as e:
-#         print(f'Error parsing JSON response from Node.js: {e}')
-
-
 @app.route('/test-communicate-with-node', methods=['GET'])
 def test_communicate_with_node():
     print(Fore.YELLOW + '********Testing communication with Node.js called...' + Style.RESET_ALL)
@@ -191,4 +167,4 @@ def random_string(length):
 
 if __name__ == '__main__':
     # run_after_delay()
-    socketio.run(app, host='0.0.0.0', port=4000)
+    socketio.run(app, host='0.0.0.0', port=os.getenv('FLASK_PORT', 5000), debug=True)
